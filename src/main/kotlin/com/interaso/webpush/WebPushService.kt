@@ -32,6 +32,12 @@ public class WebPushService(
      * @throws WebPushStatusException if an unexpected status code is received from the push service.
      * @throws WebPushException if an unexpected exception is caught while constructing request.
      */
+    @Deprecated(message = "Streamlined WebPushService API using a single send method with a Notification object",
+        ReplaceWith(
+            expression = "send(Notification(payload, endpoint, p256dh, auth, ttl, topic, urgency))",
+            imports    = ["com.interaso.webpush.Notification"]
+        )
+    )
     public fun send(
         payload: String,
         endpoint: String,
@@ -41,7 +47,7 @@ public class WebPushService(
         topic: String? = null,
         urgency: WebPush.Urgency? = null,
     ): WebPush.SubscriptionState {
-        return send(payload.toByteArray(), endpoint, decodeBase64(p256dh), decodeBase64(auth), ttl, topic, urgency)
+        return send(Notification(payload, endpoint, p256dh, auth, ttl, topic, urgency))
     }
 
     /**
@@ -59,6 +65,12 @@ public class WebPushService(
      * @throws WebPushStatusException if an unexpected status code is received from the push service.
      * @throws WebPushException if an unexpected exception is caught while constructing request.
      */
+    @Deprecated(message = "Streamlined WebPushService API using a single send method with a Notification object",
+        ReplaceWith(
+            expression = "send(Notification(payload, endpoint, p256dh, auth, ttl, topic, urgency))",
+            imports    = ["com.interaso.webpush.Notification"]
+        )
+    )
     public fun send(
         payload: ByteArray,
         endpoint: String,
@@ -68,12 +80,25 @@ public class WebPushService(
         topic: String? = null,
         urgency: WebPush.Urgency? = null,
     ): WebPush.SubscriptionState {
-        val body = webPush.getBody(payload, p256dh, auth)
-        val headers = webPush.getHeaders(endpoint, ttl, topic, urgency)
+        return send(Notification(payload, endpoint, p256dh, auth, ttl, topic, urgency))
+    }
+
+    /**
+     * Sends a push notification using the given endpoint and credentials.
+     *
+     * @param notification The web push notification to be sent.
+     *
+     * @return current state of this subscription
+     * @throws WebPushStatusException if an unexpected status code is received from the push service.
+     * @throws WebPushException if an unexpected exception is caught while constructing request.
+     */
+    public fun send(notification: Notification): WebPush.SubscriptionState {
+        val body = webPush.getBody(notification.payload, notification.p256dh, notification.auth)
+        val headers = webPush.getHeaders(notification.endpoint, notification.ttl, notification.topic, notification.urgency)
 
         val request = HttpRequest.newBuilder()
             .POST(HttpRequest.BodyPublishers.ofByteArray(body))
-            .uri(URI.create(endpoint))
+            .uri(URI.create(notification.endpoint))
             .apply { headers.forEach { setHeader(it.key, it.value) } }
             .build()
 
