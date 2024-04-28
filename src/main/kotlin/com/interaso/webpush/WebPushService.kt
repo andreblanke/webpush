@@ -33,7 +33,6 @@ public abstract class WebPushService(protected val webPush: WebPush) {
      * @param urgency The urgency level of the push notification (optional).
      *
      * @return current state of this subscription
-     * @throws WebPushStatusException if an unexpected status code is received from the push service.
      * @throws WebPushException if an unexpected exception is caught while constructing request.
      */
     @Deprecated(message = "Streamlined WebPushService API using a single send method with a Notification object",
@@ -66,7 +65,6 @@ public abstract class WebPushService(protected val webPush: WebPush) {
      * @param urgency The urgency level of the push notification (optional).
      *
      * @return current state of this subscription
-     * @throws WebPushStatusException if an unexpected status code is received from the push service.
      * @throws WebPushException if an unexpected exception is caught while constructing request.
      */
     @Deprecated(message = "Streamlined WebPushService API using a single send method with a Notification object",
@@ -93,7 +91,6 @@ public abstract class WebPushService(protected val webPush: WebPush) {
      * @param notification The web push notification to be sent.
      *
      * @return current state of this subscription
-     * @throws WebPushStatusException if an unexpected status code is received from the push service.
      * @throws WebPushException if an unexpected exception is caught while constructing request.
      */
     public abstract fun send(notification: Notification): WebPush.SubscriptionState
@@ -127,9 +124,30 @@ public class JdkHttpClientWebPushService(
 
         val response = httpClient.send(request, BodyHandlers.ofString())
 
-        return webPush.getSubscriptionState(
-            response.statusCode(),
-            response.body(),
-        )
+        try {
+            return webPush.getSubscriptionState(
+                response.statusCode(),
+                response.body(),
+            )
+        } catch (exception: WebPushException) {
+            throw WebPushHttpException(
+                response,
+                "Received a response with an unsuccessful HTTP status code: [${response.statusCode()}] - ${response.body()}",
+                exception
+            )
+        }
     }
+
+    /**
+     * Represents an exception that occurs during web push sending.
+     *
+     * @param response The HTTP response object which caused this exception.
+     * @param message The detail message of the exception.
+     * @param cause The cause of the exception, or null if the cause is nonexistent or unknown.
+     */
+    public class WebPushHttpException(
+        public val response: HttpResponse<String>,
+        message: String,
+        cause: Throwable
+    ) : WebPushException(message, cause)
 }
