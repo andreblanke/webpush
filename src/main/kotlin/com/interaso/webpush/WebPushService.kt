@@ -6,16 +6,20 @@ import java.net.http.HttpResponse.*
 
 /**
  * Represents a service for sending web push notifications.
- *
- * @property subject The subject identifying the push notification sender. It must start with "mailto:" or "https://".
- * @property vapidKeys The VapidKeys object containing the public and private keys for VAPID authentication.
  */
-public class WebPushService(
-    public val subject: String,
-    public val vapidKeys: VapidKeys,
-) {
-    private val webPush = WebPush(subject, vapidKeys)
-    private val httpClient = HttpClient.newBuilder().build()
+public abstract class WebPushService(protected val webPush: WebPush) {
+
+    /**
+     * The subject identifying the push notification sender. It must start with "mailto:" or "https://".
+     */
+    public val subject: String
+        get() = webPush.subject
+
+    /**
+     * The VapidKeys object containing the public and private keys for VAPID authentication.
+     */
+    public val vapidKeys: VapidKeys
+        get() = webPush.vapidKeys
 
     /**
      * Sends a push notification using the given endpoint and credentials.
@@ -92,7 +96,26 @@ public class WebPushService(
      * @throws WebPushStatusException if an unexpected status code is received from the push service.
      * @throws WebPushException if an unexpected exception is caught while constructing request.
      */
-    public fun send(notification: Notification): WebPush.SubscriptionState {
+    public abstract fun send(notification: Notification): WebPush.SubscriptionState
+}
+
+/**
+ * Represents a service for sending web push notifications using the built-in JDK [HttpClient].
+ */
+public class JdkHttpClientWebPushService(
+    webPush: WebPush,
+    httpClient: HttpClient? = null
+): WebPushService(webPush) {
+
+    private val httpClient: HttpClient = httpClient ?: HttpClient.newHttpClient()
+
+    public constructor(
+        subject: String,
+        vapidKeys: VapidKeys,
+        httpClient: HttpClient? = null
+    ) : this(WebPush(subject, vapidKeys), httpClient)
+
+    public override fun send(notification: Notification): WebPush.SubscriptionState {
         val body = webPush.getBody(notification.payload, notification.p256dh, notification.auth)
         val headers = webPush.getHeaders(notification.endpoint, notification.ttl, notification.topic, notification.urgency)
 
